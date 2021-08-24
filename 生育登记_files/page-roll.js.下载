@@ -1,0 +1,133 @@
+
++function($){
+	var PageRoll = function(element, options){
+		return this.init('pageRoll', element, options)
+	}
+	PageRoll.prototype = {
+		constructor: PageRoll
+		, init : function(type, element, options){
+			this.$element = $(element)
+			this.type = type
+			this.options = $.extend({}, $.fn[type].defaults, options);
+			this.$element.find('.next').click($.proxy(this.next, this))
+			this.$element.find('.prev').click($.proxy(this.prev, this))
+			this.$element.find('.first').click($.proxy(this.first, this))
+			this.$element.find('.last').click($.proxy(this.last, this))
+			this.$element.find('.page').click($.proxy(function(e){
+				this.turnPage(parseInt(e.target.innerHTML)-1)
+			}, this))
+			this.$element.find('.currentPage').blur($.proxy(function(e){
+				this.currentPage = parseInt(e.target.innerHTML)
+				if(isNaN(this.currentPage) || this.currentPage < 1 || this.currentPage > this.totalPage){
+					this.currentPage = 1
+				}
+				e.target.innerHTML = this.currentPage
+			}, this))
+			this.$element.find('.currentPage').keyup($.proxy(function(e){
+				if(e.keyCode == 13){
+					e.target.blur()
+					this.turnPage(this.currentPage - 1)
+				}
+			}, this))
+			this.$element.find('.go').click($.proxy(function(){
+				this.currentPage --
+				this.turnPage(this.currentPage)
+			}, this))
+			
+			
+			this.form = this.$element.closest('form')
+			this.currentPage = parseInt(this.$element.find('.currentPage').html())
+			if(isNaN(this.currentPage)){
+				this.currentPage = 0
+			}
+			this.totoalRows = parseInt(this.$element.find('.totalRows').html())
+			if(isNaN(this.totoalRows)){
+				this.totoalRows = 0
+			}
+			this.pageSize = parseInt(this.$element.find('.pageSize').html())
+			if(isNaN(this.pageSize)){
+				this.pageSize = 10
+			}
+			this.totalPage = parseInt(this.totoalRows / this.pageSize)
+			if(this.totoalRows % this.pageSize != 0 || this.totalPage == 0){
+				this.totalPage ++
+			}
+		}
+		, turnPage : function(page){
+			if(typeof(this.options.turnPage) == 'function'){
+				this.options.turnPage(page)
+				return
+			}
+			if(this.form.length > 0){
+				this.form
+					.append('<input type=hidden name="'+this.options.fixName[0]+'" value='+page+' />')
+					.submit()
+			}else{
+				var href = window.location.href;
+				window.location.href = this.appendParam(href, this.options.fixName[0], page)
+			}
+		}
+		, next : function(){
+			if(this.currentPage < this.totalPage){
+				this.turnPage(this.currentPage)
+			}
+		}
+		, prev : function(){
+			if(this.currentPage > 1){
+				this.turnPage(this.currentPage - 2)
+			}
+		}
+		, first : function(){
+			this.turnPage(0)
+		}
+		, last : function(){
+			this.turnPage(this.totalPage - 1)
+		}
+		, reload : function(){
+			this.turnPage(this.currentPage - 1)
+		}
+		, appendParam : function(url, param, value){
+			if(url.indexOf(param)==-1){
+				return url.indexOf('?')>-1 ? url + '&' + param + '=' + value : url + '?' + param + '=' + value
+			}
+			var strs = url.split(param)
+			strs[1] = strs[1].indexOf('&') > -1 ? '=' + value + strs[1].substring(strs[1].indexOf('&')) : '=' + value
+			return strs.join(param)
+		}
+		, destroy : function(){
+			this.$element.data('pageRoll',null)
+		}
+	}
+	
+	$.fn.pageRoll = function ( option ) {
+	    return this.each(function () {
+	        var $this = $(this)
+	          , data = $this.data('pageRoll')
+	          , options = typeof option == 'object' && option
+	        if (!data) $this.data('pageRoll', (data = new PageRoll(this, options)))
+	        if (typeof option == 'string') data[option]()
+	    })
+    }
+
+	$.fn.pageRoll.defaults = {
+		fixName : ['pageRoll.currentPage','pageRoll.pageSize']
+	}
+	$.fn.pageRoll.Constructor = PageRoll
+	
+}(jQuery)
+
+$(function(){
+	$(".pagination-container").each(function(){
+		$(this).pageRoll({
+			fixName : ['pageNumber','pageSize']
+			, turnPage: function(page){
+				page = page + 1;
+				var form = this.target.closest('form')
+				if(form.length > 0){
+					form.append('<input type=hidden name="'+this.fixName[0]+'" value='+page+' />').submit()
+				}
+			}
+			, target: $(this)
+		});
+	})
+});
